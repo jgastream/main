@@ -1,0 +1,163 @@
+
+    :root {
+      --bg: #0f0f0f;
+      --card: #1f1f1f;
+      --primary: #007bff;
+      --text: #f0f0f0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    header {
+      background: var(--card);
+      color: var(--primary);
+      font-size: 1.8rem;
+      font-weight: bold;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    #logoutBtn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #ff3b3b;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: bold;
+      display: none;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 1rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      box-sizing: border-box;
+      background: #2c2c2c;
+      color: white;
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: var(--card);
+      border-radius: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: #2c2c2c;
+      border: none;
+      padding: 0.5rem 1.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: bold;
+      flex-grow: 1;
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    #messagesList, #reportsList {
+      max-height: 300px;
+      overflow-y: auto;
+      background: #111;
+      padding: 0.5rem;
+      border-radius: 5px;
+    }
+
+    #contentList > div {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      padding: 0.5rem 0;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    #searchBar {
+      margin: 1rem auto;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    #searchInput {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    .media-info {
+      flex-grow: 1;
+      min-width: 180px;
+    }
+
+    .report-item {
+      border-bottom: 1px solid #444;
+      padding: 0.5rem 0;
+    }
+
+    .report-item p {
+      margin: 0.2rem 0;
+      font-size: 0.9rem;
+    }
+
+    .report-item button {
+      background: #b32e2e;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.85rem;
+      margin-top: 0.3rem;
+    }
+  
