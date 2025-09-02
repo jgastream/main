@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JGAStream Admin Panel</title>
+    <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+
+<header>JGAStream Admin Panel</header>
+<button id="logoutBtn">Logout</button>
+
+<!-- LOGIN PANEL -->
+<div id="loginPanel" class="container">
+  <h2>Admin Login</h2>
+  <input type="email" id="loginEmail" placeholder="Email" autocomplete="username" />
+  <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
+  <button id="loginBtn" class="btn">Login</button>
+  <p id="loginError" style="color: red;"></p>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="container" style="display: none;">
+  <div id="searchBar">
+    <input type="text" id="searchInput" placeholder="Search by title..." />
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="uploadTab">📤 Upload</button>
+    <button class="tab-btn" data-tab="contentTab">📁 Existing Content</button>
+    <button class="tab-btn" data-tab="messagesTab">📩 User Messages</button>
+    <button class="tab-btn" data-tab="reportsTab">⚠️ Reports</button>
+  </div>
+
+  <!-- Upload Tab -->
+  <div id="uploadTab" class="tab-content active">
+    <label for="titleInput">Title</label>
+    <input type="text" id="titleInput" placeholder="Enter title" />
+
+    <label for="genreInput">Genre</label>
+    <input type="text" id="genreInput" placeholder="e.g. Drama, Action" />
+
+    <label for="descriptionInput">Description</label>
+    <textarea id="descriptionInput" rows="4" placeholder="Enter description"></textarea>
+<!-- Replace your old label and input with this -->
+<div id="artistContainer" style="display: none;">
+  <label for="artistInput" id="artistLabel">Artist Name</label>
+  <input type="text" id="artistInput" placeholder="Enter artist name" />
+</div>
+
+
+    <label for="typeSelect">Type</label>
+    <select id="typeSelect">
+      <option value="movie">Movie</option>
+      <option value="series">Series</option>
+      <option value="music">Music</option>
+    </select>
+
+    <div id="musicLinksContainer" style="display: none;">
+  <label for="embeddedMusicUrl">Embedded Music URL (For Player)</label>
+  <input type="text" id="embeddedMusicUrl" placeholder="https://.../embed.mp3" />
+
+  <label for="downloadMusicUrl">Download Music URL</label>
+  <input type="text" id="downloadMusicUrl" placeholder="https://.../download.mp3" />
+</div>
+
+    <div id="seasonContainer" style="display:none;">
+      <label for="seasonCountInput">Number of Seasons</label>
+      <input type="number" id="seasonCountInput" min="1" max="20" />
+      <div id="episodesInputs"></div>
+    </div>
+
+    <label for="urlsInput" id="urlsLabel">Download URLs (one per line)</label>
+    <textarea id="urlsInput" rows="4" placeholder="Enter one download URL per line"></textarea>
+
+    <label for="trailerInput">YouTube Trailer URL</label>
+    <input type="text" id="trailerInput" placeholder="https://www.youtube.com/embed/..." />
+
+    <label for="posterUrlInput">Poster Image URL</label>
+    <input type="text" id="posterUrlInput" placeholder="Paste Cloudinary image URL here" />
+
+    <button id="addUpdateBtn" class="btn">Add / Update</button>
+  </div>
+
+  <!-- Content Tab -->
+  <div id="contentTab" class="tab-content">
+    <h3>Existing Content (Alphabetical)</h3>
+    <div id="contentList"></div>
+  </div>
+
+  <!-- Messages Tab -->
+  <div id="messagesTab" class="tab-content">
+    <h3>User Messages</h3>
+    <div id="messagesList"></div>
+  </div>
+
+  <!-- Reports Tab -->
+  <div id="reportsTab" class="tab-content">
+    <h3>User Reports</h3>
+    <div id="reportsList"></div>
+  </div>
+</div>
+
+<!-- 🔗 JS Script -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut,
+  } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    doc,
+    updateDoc,
+    deleteDoc,
+    onSnapshot,
+    serverTimestamp,
+  } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCJOb0p6KHwNXCFddQJJ1vk09oqozQjvNw",
+    authDomain: "jahkid6i-e51aa.firebaseapp.com",
+    projectId: "jahkid6i-e51aa",
+    storageBucket: "jahkid6i-e51aa.appspot.com",
+    messagingSenderId: "849738273147",
+    appId: "1:849738273147:web:bff891dd76502870a36dde",
+    measurementId: "G-70QFFJZWKQ",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // DOM Elements
+  const loginPanel = document.getElementById("loginPanel");
+  const adminPanel = document.getElementById("adminPanel");
+  const loginEmail = document.getElementById("loginEmail");
+  const loginPassword = document.getElementById("loginPassword");
+  const loginBtn = document.getElementById("loginBtn");
+  const loginError = document.getElementById("loginError");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  const searchInput = document.getElementById("searchInput");
+  const contentList = document.getElementById("contentList");
+
+  const titleInput = document.getElementById("titleInput");
+  const genreInput = document.getElementById("genreInput");
+  const descriptionInput = document.getElementById("descriptionInput");
+  const typeSelect = document.getElementById("typeSelect");
+  const musicTypeContainer = document.getElementById("musicTypeContainer");
+  const seasonContainer = document.getElementById("seasonContainer");
+  const seasonCountInput = document.getElementById("seasonCountInput");
+  const episodesInputs = document.getElementById("episodesInputs");
+
+  // inputs for music URLs (embed + download)
+  const embeddedMusicUrlInput = document.getElementById("embeddedMusicUrl");
+  const downloadMusicUrlInput = document.getElementById("downloadMusicUrl");
+
+  const urlsInput = document.getElementById("urlsInput");
+  const urlsLabel = document.getElementById("urlsLabel");
+  const trailerInput = document.getElementById("trailerInput");
+  const posterUrlInput = document.getElementById("posterUrlInput");
+  const addUpdateBtn = document.getElementById("addUpdateBtn");
+
+  const messagesList = document.getElementById("messagesList");
+  const reportsList = document.getElementById("reportsList");
+
+  let editingDocId = null;
+  let mediaData = [];
+
+  // Tabs switching
+  const tabButtons = document.querySelectorAll(".tab-btn");
+  const tabContents = document.querySelectorAll(".tab-content");
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabButtons.forEach(b => b.classList.remove("active"));
+      tabContents.forEach(c => c.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  // Show/hide inputs based on type
+  typeSelect.addEventListener("change", () => {
+  const val = typeSelect.value;
+  const artistContainer = document.getElementById("artistContainer");
+
+  if (val === "music") {
+    seasonContainer.style.display = "none";
+    urlsInput.style.display = "none";
+    urlsLabel.style.display = "none";
+
+    if (embeddedMusicUrlInput) embeddedMusicUrlInput.parentElement.style.display = "block";
+    if (downloadMusicUrlInput) downloadMusicUrlInput.parentElement.style.display = "block";
+    if (artistContainer) artistContainer.style.display = "block";
+
+  } else if (val === "series") {
+    seasonContainer.style.display = "block";
+    urlsInput.style.display = "none";
+    urlsLabel.style.display = "none";
+
+    if (embeddedMusicUrlInput) embeddedMusicUrlInput.parentElement.style.display = "none";
+    if (downloadMusicUrlInput) downloadMusicUrlInput.parentElement.style.display = "none";
+    if (artistContainer) artistContainer.style.display = "none";
+
+  } else {
+    // movie
+    seasonContainer.style.display = "none";
+    urlsInput.style.display = "block";
+    urlsLabel.style.display = "block";
+
+    if (embeddedMusicUrlInput) embeddedMusicUrlInput.parentElement.style.display = "none";
+    if (downloadMusicUrlInput) downloadMusicUrlInput.parentElement.style.display = "none";
+    if (artistContainer) artistContainer.style.display = "none";
+  }
+});
+  // Generate episodes input for each season
+  function renderSeasons(seasonsArray = []) {
+    episodesInputs.innerHTML = "";
+    seasonsArray.forEach((seasonObj, index) => {
+      const label = document.createElement("label");
+      label.textContent = `Season ${index + 1} Episodes URLs (one per line):`;
+      const textarea = document.createElement("textarea");
+      textarea.rows = 3;
+      textarea.dataset.season = index + 1;
+      textarea.value = (seasonObj.episodes || []).join("\n");
+      episodesInputs.appendChild(label);
+      episodesInputs.appendChild(textarea);
+    });
+    seasonCountInput.value = seasonsArray.length;
+  }
+
+  const addSeasonBtn = document.createElement("button");
+  addSeasonBtn.textContent = "➕ Add Season";
+  addSeasonBtn.className = "btn";
+  addSeasonBtn.onclick = () => {
+    const count = episodesInputs.children.length / 2 + 1;
+    const label = document.createElement("label");
+    label.textContent = `Season ${count} Episodes URLs (one per line):`;
+    const textarea = document.createElement("textarea");
+    textarea.rows = 3;
+    textarea.dataset.season = count;
+    episodesInputs.appendChild(label);
+    episodesInputs.appendChild(textarea);
+    seasonCountInput.value = count;
+  };
+
+  const removeSeasonBtn = document.createElement("button");
+  removeSeasonBtn.textContent = "➖ Remove Last Season";
+  removeSeasonBtn.className = "btn";
+  removeSeasonBtn.style.background = "#444";
+  removeSeasonBtn.onclick = () => {
+    if (episodesInputs.children.length >= 2) {
+      episodesInputs.removeChild(episodesInputs.lastChild); // textarea
+      episodesInputs.removeChild(episodesInputs.lastChild); // label
+      seasonCountInput.value = episodesInputs.children.length / 2;
+    }
+  };
+
+  episodesInputs.parentElement.appendChild(addSeasonBtn);
+  episodesInputs.parentElement.appendChild(removeSeasonBtn);function clearInputs() {
+  titleInput.value = "";
+  genreInput.value = "";
+  descriptionInput.value = "";
+  typeSelect.value = "movie";
+  seasonContainer.style.display = "none";
+  seasonCountInput.value = "";
+  episodesInputs.innerHTML = "";
+  urlsInput.value = "";
+  trailerInput.value = "";
+  posterUrlInput.value = "";
+
+  // Safely clear optional fields
+  if (embeddedMusicUrlInput) embeddedMusicUrlInput.value = "";
+  if (embeddedMusicUrlInput?.parentElement) embeddedMusicUrlInput.parentElement.style.display = "none";
+
+  if (downloadMusicUrlInput) downloadMusicUrlInput.value = "";
+  if (downloadMusicUrlInput?.parentElement) downloadMusicUrlInput.parentElement.style.display = "none";
+
+  const artistInput = document.getElementById("artistInput");
+  const artistLabel = document.getElementById("artistLabel");
+  if (artistInput) artistInput.value = "";
+  if (artistInput) artistInput.style.display = "none";
+  if (artistLabel) artistLabel.style.display = "none";
+
+  editingDocId = null;
+}
+
+
+  // Render content list alphabetically, filtered by search
+  function renderContentList(filter = "") {
+    contentList.innerHTML = "";
+    let filtered = mediaData;
+    if (filter.trim() !== "") {
+      filtered = mediaData.filter(m =>
+        m.title.toLowerCase().includes(filter.toLowerCase())
+      );
+    }
+    filtered.sort((a, b) => a.title.localeCompare(b.title));
+    filtered.forEach(doc => {
+      const div = document.createElement("div");
+
+      // Media basic info + visitor count + genre
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "media-info";
+      infoDiv.innerHTML = `<strong>${doc.title}</strong> (${doc.type})<br>
+        <small>Genre: ${doc.genre || "N/A"}</small><br>
+        <small>Visitors: ${doc.visitors || 0}</small>`;
+
+      if(doc.type === "music" && doc.artist) {
+        infoDiv.innerHTML += `<br><small>Artist: ${doc.artist}</small>`;
+      }
+
+      div.appendChild(infoDiv);
+
+      // Edit button
+      const btnEdit = document.createElement("button");
+      btnEdit.textContent = "Edit";
+      btnEdit.className = "btn";
+      btnEdit.onclick = () => loadForEdit(doc);
+
+      // Delete button
+      const btnDelete = document.createElement("button");
+      btnDelete.textContent = "Delete";
+      btnDelete.className = "btn";
+      btnDelete.style.background = "#b32e2e";
+      btnDelete.onclick = () => deleteMedia(doc.id);
+
+      div.appendChild(btnEdit);
+      div.appendChild(btnDelete);
+
+      contentList.appendChild(div);
+    });
+  }
+
+  // Load media into form for editing
+  function loadForEdit(doc) {
+    editingDocId = doc.id;
+    titleInput.value = doc.title || "";
+    genreInput.value = doc.genre || "";
+    descriptionInput.value = doc.description || "";
+    typeSelect.value = doc.type || "movie";
+    typeSelect.dispatchEvent(new Event("change"));
+    trailerInput.value = doc.trailer || "";
+    posterUrlInput.value = doc.posterUrl || "";
+
+    if (doc.type === "movie") {
+      urlsInput.value = (doc.urls || []).join("\n");
+      if(embeddedMusicUrlInput) embeddedMusicUrlInput.parentElement.style.display = "none";
+      if(downloadMusicUrlInput) downloadMusicUrlInput.parentElement.style.display = "none";
+    } else if (doc.type === "music") {
+      // Show embedded + download inputs
+      if(embeddedMusicUrlInput) {
+        embeddedMusicUrlInput.parentElement.style.display = "block";
+        embeddedMusicUrlInput.value = doc.urls?.[0] || "";
+      }
+      if(downloadMusicUrlInput) {
+        downloadMusicUrlInput.parentElement.style.display = "block";
+        downloadMusicUrlInput.value = doc.urls?.[1] || "";
+      }
+      urlsInput.value = "";
+    } else if (doc.type === "series") {
+      if (doc.seasons) renderSeasons(doc.seasons);
+      urlsInput.value = "";
+      if(embeddedMusicUrlInput) embeddedMusicUrlInput.parentElement.style.display = "none";
+      if(downloadMusicUrlInput) downloadMusicUrlInput.parentElement.style.display = "none";
+    }
+  }
+
+  // Add or update media
+  addUpdateBtn.addEventListener("click", async () => {
+    const title = titleInput.value.trim();
+    if (!title) {
+      alert("Title is required.");
+      return;
+    }
+    const genre = genreInput.value.trim();
+    const description = descriptionInput.value.trim();
+    const type = typeSelect.value;
+    const trailer = trailerInput.value.trim();
+
+    let docData = {
+      title,
+      genre,
+      description,
+      type,
+      trailer,
+      posterUrl: posterUrlInput.value.trim() || null,
+      timestamp: serverTimestamp(),
+    };
+
+    if (type === "movie") {
+      const urls = urlsInput.value.split("\n").map(u => u.trim()).filter(u => u);
+      if (urls.length === 0) {
+        alert("Please enter at least one download URL.");
+        return;
+      }
+      docData.urls = urls;
+    } else if (type === "series") {
+      const seasons = [];
+      episodesInputs.querySelectorAll("textarea").forEach((ta, index) => {
+        const eps = ta.value.split("\n").map(u => u.trim()).filter(u => u);
+        if (eps.length > 0) {
+          seasons.push({ season: index + 1, episodes: eps });
+        }
+      });
+      if (seasons.length === 0) {
+        alert("Please enter at least one season with episodes.");
+        return;
+      }
+      docData.seasons = seasons;
+    } else if (type === "music") {
+      const embedUrl = embeddedMusicUrlInput.value.trim();
+      const downloadUrl = downloadMusicUrlInput.value.trim();
+      const artistInput = document.getElementById("artistInput");
+      const artist = artistInput ? artistInput.value.trim() : "";
+
+      if (!embedUrl || !downloadUrl) {
+        alert("Please enter both embedded and download URLs for music.");
+        return;
+      }
+      if (!artist) {
+        alert("Artist name is required.");
+        return;
+      }
+      docData.urls = [embedUrl, downloadUrl];
+      docData.artist = artist;
+      docData.musicType = "both";
+    }
+
+    addUpdateBtn.disabled = true;
+    addUpdateBtn.textContent = "Saving...";
+
+    try {
+      if (editingDocId) {
+        const docRef = doc(db, "media", editingDocId);
+        await updateDoc(docRef, docData);
+        alert("Updated successfully!");
+      } else {
+        await addDoc(collection(db, "media"), docData);
+        alert("Added successfully!");
+      }
+      clearInputs();
+    } catch (e) {
+      alert("Failed to save data: " + e.message);
+    } finally {
+      addUpdateBtn.disabled = false;
+      addUpdateBtn.textContent = "Add / Update";
+    }
+  });
+
+  // Delete media
+  async function deleteMedia(id) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+    try {
+      await deleteDoc(doc(db, "media", id));
+      alert("Deleted successfully!");
+    } catch (e) {
+      alert("Failed to delete: " + e.message);
+    }
+  }
+
+  // Listen for auth state changes
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      loginPanel.style.display = "none";
+      adminPanel.style.display = "block";
+      logoutBtn.style.display = "inline-block";
+      subscribeMedia();
+      subscribeMessages();
+      subscribeReports();
+    } else {
+      loginPanel.style.display = "block";
+      adminPanel.style.display = "none";
+      logoutBtn.style.display = "none";
+      mediaData = [];
+      renderContentList();
+    }
+  });
+
+  logoutBtn.addEventListener("click", () => {
+    signOut(auth);
+  });
+
+  // Handle login
+  loginBtn.addEventListener("click", async () => {
+    loginError.textContent = "";
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
+    } catch (e) {
+      loginError.textContent = e.message;
+    }
+  });
+
+  // Subscribe media collection realtime
+  function subscribeMedia() {
+    const q = query(collection(db, "media"), orderBy("title"));
+    return onSnapshot(q, (snapshot) => {
+      mediaData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      renderContentList(searchInput.value);
+    });
+  }
+
+  // Search input handler
+  searchInput.addEventListener("input", () => {
+    renderContentList(searchInput.value);
+  });
+
+  // Subscribe user messages
+  function subscribeMessages() {
+    const msgRef = query(collection(db, "messages"), orderBy("timestamp", "desc"));
+    onSnapshot(msgRef, (snapshot) => {
+      messagesList.innerHTML = "";
+      if (snapshot.empty) {
+        messagesList.innerHTML = "<p style='color:#aaa;'>No messages yet.</p>";
+        return;
+      }
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const wrapper = document.createElement("div");
+        wrapper.style.borderBottom = "1px solid #333";
+        wrapper.style.marginBottom = "0.7rem";
+        wrapper.style.paddingBottom = "0.5rem";
+
+        const email = document.createElement("p");
+        email.innerHTML = `<strong>Email:</strong> ${data.email || "N/A"}`;
+
+        const time = document.createElement("p");
+        const date = data.timestamp?.toDate?.()?.toLocaleString() || "Unknown time";
+        time.innerHTML = `<strong>Time:</strong> ${date}`;
+
+        const message = document.createElement("p");
+        message.innerHTML = `<strong>Message:</strong> ${data.message || ""}`;
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "btn";
+        delBtn.style.background = "#b32e2e";
+        delBtn.onclick = async () => {
+          if (confirm("Delete this message?")) {
+            await deleteDoc(doc.ref);
+          }
+        };
+
+        wrapper.append(email, time, message, delBtn);
+        messagesList.appendChild(wrapper);
+      });
+    });
+  }
+
+  // Subscribe user reports
+  function subscribeReports() {
+    const repRef = query(collection(db, "reports"), orderBy("timestamp", "desc"));
+    onSnapshot(repRef, (snapshot) => {
+      reportsList.innerHTML = "";
+      if (snapshot.empty) {
+        reportsList.innerHTML = "<p style='color:#aaa;'>No reports yet.</p>";
+        return;
+      }
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const wrapper = document.createElement("div");
+        wrapper.className = "report-item";
+
+        const email = document.createElement("p");
+        email.innerHTML = `<strong>Email:</strong> ${data.email || "N/A"}`;
+
+        const time = document.createElement("p");
+        const date = data.timestamp?.toDate?.()?.toLocaleString() || "Unknown time";
+        time.innerHTML = `<strong>Time:</strong> ${date}`;
+
+        const reportedTitle = document.createElement("p");
+        reportedTitle.innerHTML = `<strong>Title:</strong> ${data.title || "N/A"}`;
+
+        const reportMsg = document.createElement("p");
+        reportMsg.innerHTML = `<strong>Report:</strong> ${data.report || ""}`;
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete Report";
+        delBtn.onclick = async () => {
+          if (confirm("Delete this report?")) {
+            await deleteDoc(doc.ref);
+          }
+        };
+
+        wrapper.append(email, time, reportedTitle, reportMsg, delBtn);
+        reportsList.appendChild(wrapper);
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
